@@ -289,7 +289,7 @@ static void dcic_int_disable(struct dcic_data *dcic)
 
 	/* Disable both function and error interrupt */
 	val = readl(&dcic->regs->dcicic);
-	val = DCICIC_ERROR_INT_DISABLE | DCICIC_FUN_INT_DISABLE;
+	val |= DCICIC_ERROR_INT_DISABLE | DCICIC_FUN_INT_DISABLE;
 	writel(val, &dcic->regs->dcicic);
 }
 
