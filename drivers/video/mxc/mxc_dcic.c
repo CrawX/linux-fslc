@@ -461,6 +461,7 @@ static long dcic_ioctl(struct file *file,
 	case DCIC_IOC_STOP_VSYNC:
 		mxc_dcic_vsync = 0;
 		mxc_dcic_irq = 0;
+		wake_up(&mxc_dcic_wait);
 		init_completion(&dcic->roi_crc_comp);
 		wait_for_completion_interruptible_timeout(&dcic->roi_crc_comp, 1 * HZ);
 		dcic_disable(dcic);
@@ -487,7 +488,7 @@ static ssize_t dcic_read(struct file *file, char __user *buf, size_t count,
 		if (file->f_flags & O_NONBLOCK) {
 			ret = -EAGAIN;
 		}
-		else if (wait_event_interruptible(mxc_dcic_wait, mxc_dcic_irq))
+		else if (wait_event_interruptible(mxc_dcic_wait, mxc_dcic_irq || !mxc_dcic_vsync))
 			ret = -ERESTARTSYS;
 	} while(!ret);
 
