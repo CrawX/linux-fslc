@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    Copyright (C) 2005 - 2013 by Vivante Corp.
 *
 *    This program is free software; you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -22,10 +22,6 @@
 #ifndef __gc_hal_profiler_h_
 #define __gc_hal_profiler_h_
 
-#if VIVANTE_PROFILER_NEW
-#include "gc_hal_engine.h"
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,9 +34,6 @@ extern "C" {
 
 #define GLTEXTURE_OBJECT 30
 #define GLTEXTURE_OBJECT_BYTES 31
-
-#define GLBUFOBJ_OBJECT 40
-#define GLBUFOBJ_OBJECT_BYTES 41
 
 #if VIVANTE_PROFILER
 #define gcmPROFILE_GC(Enum, Value)  gcoPROFILER_Count(gcvNULL, Enum, Value)
@@ -59,12 +52,12 @@ extern "C" {
 #define    ES11_LINECOUNT          (ES11_POINTCOUNT        + 1)
 #define    ES11_TRIANGLECOUNT      (ES11_LINECOUNT         + 1)
 
-#define    ES30_CALLS              159
-#define    ES30_DRAWCALLS          (ES30_CALLS             + 1)
-#define    ES30_STATECHANGECALLS   (ES30_DRAWCALLS         + 1)
-#define    ES30_POINTCOUNT         (ES30_STATECHANGECALLS  + 1)
-#define    ES30_LINECOUNT          (ES30_POINTCOUNT        + 1)
-#define    ES30_TRIANGLECOUNT      (ES30_LINECOUNT         + 1)
+#define    ES20_CALLS              159
+#define    ES20_DRAWCALLS          (ES20_CALLS             + 1)
+#define    ES20_STATECHANGECALLS   (ES20_DRAWCALLS         + 1)
+#define    ES20_POINTCOUNT         (ES20_STATECHANGECALLS  + 1)
+#define    ES20_LINECOUNT          (ES20_POINTCOUNT        + 1)
+#define    ES20_TRIANGLECOUNT      (ES20_LINECOUNT         + 1)
 
 #define    VG11_CALLS              88
 #define    VG11_DRAWCALLS          (VG11_CALLS              + 1)
@@ -171,7 +164,7 @@ extern "C" {
 #define VPG_TIME        0x030000
 #define VPG_MEM         0x040000
 #define VPG_ES11        0x050000
-#define VPG_ES30        0x060000
+#define VPG_ES20        0x060000
 #define VPG_VG11        0x070000
 #define VPG_HAL         0x080000
 #define VPG_HW          0x090000
@@ -189,11 +182,10 @@ extern "C" {
 #define VPG_PVS         0x150000
 #define VPG_PPS         0x160000
 #define VPG_ES11_TIME   0x170000
-#define VPG_ES30_TIME   0x180000
+#define VPG_ES20_TIME   0x180000
 #define VPG_FRAME       0x190000
 #define VPG_ES11_DRAW   0x200000
-#define VPG_ES30_DRAW   0x210000
-#define VPG_VG11_TIME   0x220000
+#define VPG_ES20_DRAW   0x210000
 #define VPG_END         0xff0000
 
 /* Info. */
@@ -222,13 +214,13 @@ extern "C" {
 #define    VPC_ES11LINECOUNT        (VPG_ES11 +    ES11_LINECOUNT)
 #define    VPC_ES11TRIANGLECOUNT    (VPG_ES11 +    ES11_TRIANGLECOUNT)
 
-/* OpenGL ES30 Statistics Counter IDs. */
-#define    VPC_ES30CALLS            (VPG_ES30 +    ES30_CALLS)
-#define    VPC_ES30DRAWCALLS        (VPG_ES30 +    ES30_DRAWCALLS)
-#define    VPC_ES30STATECHANGECALLS (VPG_ES30 +    ES30_STATECHANGECALLS)
-#define    VPC_ES30POINTCOUNT       (VPG_ES30 +    ES30_POINTCOUNT)
-#define    VPC_ES30LINECOUNT        (VPG_ES30 +    ES30_LINECOUNT)
-#define    VPC_ES30TRIANGLECOUNT    (VPG_ES30 +    ES30_TRIANGLECOUNT)
+/* OpenGL ES20 Statistics Counter IDs. */
+#define    VPC_ES20CALLS            (VPG_ES20 +    ES20_CALLS)
+#define    VPC_ES20DRAWCALLS        (VPG_ES20 +    ES20_DRAWCALLS)
+#define    VPC_ES20STATECHANGECALLS (VPG_ES20 +    ES20_STATECHANGECALLS)
+#define    VPC_ES20POINTCOUNT       (VPG_ES20 +    ES20_POINTCOUNT)
+#define    VPC_ES20LINECOUNT        (VPG_ES20 +    ES20_LINECOUNT)
+#define    VPC_ES20TRIANGLECOUNT    (VPG_ES20 +    ES20_TRIANGLECOUNT)
 
 /* OpenVG Statistics Counter IDs. */
 #define    VPC_VG11CALLS            (VPG_VG11 +    VG11_CALLS)
@@ -337,8 +329,11 @@ extern "C" {
 
 #define VPC_PROGRAMHANDLE           (VPG_PROG + 1)
 
-#define VPC_ES30_DRAW_NO            (VPG_ES30_DRAW + 1)
-#define VPC_ES11_DRAW_NO            (VPG_ES11_DRAW + 1)
+#define VPG_ES20_DRAW_NO  (VPG_ES20_DRAW + 1)
+#define VPG_ES11_DRAW_NO  (VPG_ES11_DRAW + 1)
+
+#define VPG_FRAME_USEVBO (VPG_FRAME + 1)
+
 #endif
 
 
@@ -421,10 +416,6 @@ typedef struct _gcsPROFILER_COUNTERS
 }
 gcsPROFILER_COUNTERS;
 
-#if VIVANTE_PROFILER_NEW
-#define NumOfDrawBuf 64
-#endif
-
 /* HAL profile information. */
 typedef struct _gcsPROFILER
 {
@@ -433,7 +424,6 @@ typedef struct _gcsPROFILER
     gctBOOL         enableHW;
     gctBOOL         enableSH;
     gctBOOL         isSyncMode;
-    gctBOOL         disableOutputCounter;
 
     gctBOOL         useSocket;
     gctINT          sockFd;
@@ -486,10 +476,8 @@ typedef struct _gcsPROFILER
     gctUINT32       prevPSTexInstCount;
     gctUINT32       prevPSPixelCount;
 
-#if VIVANTE_PROFILER_NEW
-    gcoBUFOBJ       newCounterBuf[NumOfDrawBuf];
-    gctUINT32       curBufId;
-#endif
+    char*           psSource;
+    char*           vsSource;
 
 }
 gcsPROFILER;
@@ -519,8 +507,7 @@ struct _gcsSHADER_PROFILER
 /* Initialize the gcsProfiler. */
 gceSTATUS
 gcoPROFILER_Initialize(
-    IN gcoHAL Hal,
-    IN gctBOOL Enable
+    IN gcoHAL Hal
     );
 
 /* Destroy the gcProfiler. */
@@ -559,9 +546,21 @@ gcoPROFILER_EndDraw(
 /* Increase profile counter Enum by Value. */
 gceSTATUS
 gcoPROFILER_Count(
+	IN gcoHAL Hal,
+	IN gctUINT32 Enum,
+	IN gctINT Value
+	);
+
+gceSTATUS
+gcoPROFILER_ShaderSourceFS(
     IN gcoHAL Hal,
-    IN gctUINT32 Enum,
-    IN gctINT Value
+    IN char* source
+    );
+
+gceSTATUS
+gcoPROFILER_ShaderSourceVS(
+    IN gcoHAL Hal,
+    IN char* source
     );
 
 /* Profile input vertex shader. */

@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    Copyright (C) 2005 - 2013 by Vivante Corp.
 *
 *    This program is free software; you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -256,15 +256,13 @@ gckKERNEL_MapVideoMemoryEx(
     OUT gctPOINTER * Logical
     )
 {
-    gckGALDEVICE device   = gcvNULL;
-    PLINUX_MDL mdl        = gcvNULL;
-    PLINUX_MDL_MAP mdlMap = gcvNULL;
-    gcePOOL pool          = gcvPOOL_UNKNOWN;
-    gctUINT32 offset      = 0;
-    gctUINT32 base        = 0;
+    gckGALDEVICE device;
+    PLINUX_MDL mdl;
+    PLINUX_MDL_MAP mdlMap;
+    gcePOOL pool;
+    gctUINT32 offset, base;
     gceSTATUS status;
-    gctPOINTER logical    = gcvNULL;
-    gctUINT32 baseAddress;
+    gctPOINTER logical;
 
     gcmkHEADER_ARG("Kernel=%p InUserSpace=%d Address=%08x",
                    Kernel, InUserSpace, Address);
@@ -334,23 +332,9 @@ gckKERNEL_MapVideoMemoryEx(
         else
 #endif
         {
-            gctUINT32 systemBaseAddress = 0;
-
-            if (Kernel->hardware->mmuVersion == 0)
-            {
-                gcmkONERROR(gckOS_GetBaseAddress(Kernel->os, &systemBaseAddress));
-            }
-
-            gcmkVERIFY_OK(
-                gckOS_CPUPhysicalToGPUPhysical(
-                    Kernel->os,
-                    device->contiguousVidMem->baseAddress - systemBaseAddress,
-                    &baseAddress
-                    ));
-
             gcmkVERIFY_OK(
                 gckHARDWARE_SplitMemory(Kernel->hardware,
-                                        baseAddress,
+                                        device->contiguousVidMem->baseAddress,
                                         &pool,
                                         &base));
         }
@@ -430,9 +414,6 @@ gckKERNEL_MapVideoMemory(
 gceSTATUS
 gckKERNEL_Notify(
     IN gckKERNEL Kernel,
-#if gcdMULTI_GPU
-    IN gctUINT CoreId,
-#endif
     IN gceNOTIFY Notification,
     IN gctBOOL Data
     )
@@ -453,11 +434,7 @@ gckKERNEL_Notify(
 #if COMMAND_PROCESSOR_VERSION > 1
         status = gckINTERRUPT_Notify(Kernel->interrupt, Data);
 #else
-        status = gckHARDWARE_Interrupt(Kernel->hardware,
-#if gcdMULTI_GPU
-                                       CoreId,
-#endif
-                                       Data);
+        status = gckHARDWARE_Interrupt(Kernel->hardware, Data);
 #endif
         break;
 

@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    Copyright (C) 2005 - 2013 by Vivante Corp.
 *
 *    This program is free software; you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@ typedef struct _LINUX_MDL_MAP
 {
     gctINT                  pid;
     gctPOINTER              vmaAddr;
-    gctUINT32               count;
     struct vm_area_struct * vma;
     struct _LINUX_MDL_MAP * next;
 }
@@ -36,6 +35,7 @@ typedef struct _LINUX_MDL_MAP * PLINUX_MDL_MAP;
 
 typedef struct _LINUX_MDL
 {
+    gctINT                  pid;
     char *                  addr;
 
     union _pages
@@ -61,14 +61,6 @@ typedef struct _LINUX_MDL
     PLINUX_MDL_MAP          maps;
     struct _LINUX_MDL *     prev;
     struct _LINUX_MDL *     next;
-
-    /* Pointer to allocator which allocates memory for this mdl. */
-    void *                  allocator;
-
-    /* Private data used by allocator. */
-    void *                  priv;
-
-    uint                    gid;
 }
 LINUX_MDL, *PLINUX_MDL;
 

@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    Copyright (C) 2005 - 2013 by Vivante Corp.
 *
 *    This program is free software; you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -41,9 +41,7 @@
 #include <linux/poll.h>
 #include <asm/uaccess.h>
 #include <linux/completion.h>
-#include <linux/seq_file.h>
 #include "gc_hal_kernel_linux.h"
-#include "gc_hal_kernel.h"
 
 /*
    Prequsite:
@@ -61,19 +59,13 @@
         2.a)If the debugfs is not mounted, you must do "mount -t debugfs none /sys/kernel/debug"
 
    3) To read what is being printed in the debugfs file system:
-        Ex : cat /sys/kernel/debug/gc/galcore_trace
+        Ex : cat /sys/kernel/debug/gpu/galcore_trace
 
    4)To write into the debug file system from user side :
-        Ex: echo "hello" > cat /sys/kernel/debug/gc/galcore_trace
+        Ex: echo "hello" > cat /sys/kernel/debug/gpu/galcore_trace
 
-   5)To write into debugfs from kernel side, Use the function called gckDEBUGFS_Print
+   5)To write into debugfs from kernel side, Use the function called gckDebugFileSystemPrint
 
-   How to Get Video Memory Usage:
-   1) Select a process whose video memory usage can be dump, no need to reset it until <pid> is needed to be change.
-        echo <pid>  > /sys/kernel/debug/gc/vidmem
-
-   2) Get video memory usage.
-        cat /sys/kernel/debug/gc/vidmem
 
    USECASE Kernel Dump:
 
@@ -95,18 +87,18 @@
 /**/
 typedef va_list gctDBGARGS ;
 #define gcmkARGS_START(argument, pointer)   va_start(argument, pointer)
-#define gcmkARGS_END(argument)                        va_end(argument)
+#define gcmkARGS_END(argument)              	      va_end(argument)
 
-#define gcmkDEBUGFS_PRINT(ArgumentSize, Message) \
+#define gcmkDBGFSPRINT(ArgumentSize, Message) \
   { \
-      gctDBGARGS __arguments__; \
-      gcmkARGS_START(__arguments__, Message); \
-      _debugfs_res = _DebugFSPrint(ArgumentSize, Message, &__arguments__);\
-      gcmkARGS_END(__arguments__); \
+	  gctDBGARGS __arguments__; \
+	  gcmkARGS_START(__arguments__, Message); \
+	  _DebugFSPrint(ArgumentSize, Message, __arguments__);\
+	  gcmkARGS_END(__arguments__); \
   }
 
-/* Debug File System Node Struct. */
-struct _gcsDEBUGFS_Node
+/*Debug File System Node Struct*/
+struct _gcsDebugFileSystemNode
 {
     /*wait queues for read and write operations*/
 #if defined(DECLARE_WAIT_QUEUE_HEAD)
@@ -116,7 +108,6 @@ struct _gcsDEBUGFS_Node
 #endif
     struct dentry *parent ; /*parent directory*/
     struct dentry *filen ; /*filename*/
-    struct dentry *vidmem;
     struct semaphore sem ; /* mutual exclusion semaphore */
     char *data ; /* The circular buffer data */
     int size ; /* Size of the buffer pointed to by 'data' */
@@ -124,8 +115,8 @@ struct _gcsDEBUGFS_Node
     int read_point ; /* Offset in circ. buffer of oldest data */
     int write_point ; /* Offset in circ. buffer of newest data */
     int offset ; /* Byte number of read_point in the stream */
-    struct _gcsDEBUGFS_Node *next ;
-};
+    struct _gcsDebugFileSystemNode *next ;
+} ;
 
 /* amount of data in the queue */
 #define gcmkNODE_QLEN(node) ( (node)->write_point >= (node)->read_point ? \
@@ -144,131 +135,22 @@ struct _gcsDEBUGFS_Node
 #define gcmkMIN(x, y) ((x) < (y) ? (x) : y)
 
 /*Debug File System Struct*/
-typedef struct _gcsDEBUGFS_
+typedef struct _gcsDebugFileSystem
 {
-    gcsDEBUGFS_Node* linkedlist ;
-    gcsDEBUGFS_Node* currentNode ;
+    gcsDebugFileSystemNode* linkedlist ;
+    gcsDebugFileSystemNode* currentNode ;
     int isInited ;
-} gcsDEBUGFS_ ;
+} gcsDebugFileSystem ;
+
 
 /*debug file system*/
-static gcsDEBUGFS_ gc_dbgfs ;
+static gcsDebugFileSystem gc_dbgfs ;
 
-static int gc_debugfs_open(struct inode *inode, struct file *file)
-{
-    gcsINFO_NODE *node = inode->i_private;
 
-    return single_open(file, node->info->show, node);
-}
-
-static const struct file_operations gc_debugfs_operations = {
-    .owner = THIS_MODULE,
-    .open = gc_debugfs_open,
-    .read = seq_read,
-    .llseek = seq_lseek,
-    .release = single_release,
-};
-
-gceSTATUS
-gckDEBUGFS_DIR_Init(
-    IN gckDEBUGFS_DIR Dir,
-    IN struct dentry *root,
-    IN gctCONST_STRING Name
-    )
-{
-    Dir->root = debugfs_create_dir(Name, root);
-
-    if (!Dir->root)
-    {
-        return gcvSTATUS_NOT_SUPPORTED;
-    }
-
-    INIT_LIST_HEAD(&Dir->nodeList);
-
-    return gcvSTATUS_OK;
-}
-
-gceSTATUS
-gckDEBUGFS_DIR_CreateFiles(
-    IN gckDEBUGFS_DIR Dir,
-    IN gcsINFO * List,
-    IN int count,
-    IN gctPOINTER Data
-    )
-{
-    int i;
-    gcsINFO_NODE * node;
-    gceSTATUS status;
-
-    for (i = 0; i < count; i++)
-    {
-        /* Create a node. */
-        node = (gcsINFO_NODE *)kzalloc(sizeof(gcsINFO_NODE), GFP_KERNEL);
-
-        node->info   = &List[i];
-        node->device = Data;
-
-        /* Bind to a file. TODO: clean up when fail. */
-        node->entry = debugfs_create_file(
-            List[i].name, S_IRUGO|S_IWUSR, Dir->root, node, &gc_debugfs_operations);
-
-        if (!node->entry)
-        {
-            gcmkONERROR(gcvSTATUS_OUT_OF_MEMORY);
-        }
-
-        list_add(&(node->head), &(Dir->nodeList));
-    }
-
-    return gcvSTATUS_OK;
-
-OnError:
-    gcmkVERIFY_OK(gckDEBUGFS_DIR_RemoveFiles(Dir, List, count));
-    return status;
-}
-
-gceSTATUS
-gckDEBUGFS_DIR_RemoveFiles(
-    IN gckDEBUGFS_DIR Dir,
-    IN gcsINFO * List,
-    IN int count
-    )
-{
-    int i;
-    gcsINFO_NODE * node;
-    gcsINFO_NODE * temp;
-
-    for (i = 0; i < count; i++)
-    {
-        list_for_each_entry_safe(node, temp, &Dir->nodeList, head)
-        {
-            if (node->info == &List[i])
-            {
-                debugfs_remove(node->entry);
-                list_del(&node->head);
-                kfree(node);
-            }
-        }
-    }
-
-    return gcvSTATUS_OK;
-}
-
-void
-gckDEBUGFS_DIR_Deinit(
-    IN gckDEBUGFS_DIR Dir
-    )
-{
-    if (Dir->root != NULL)
-    {
-        debugfs_remove(Dir->root);
-        Dir->root = NULL;
-    }
-}
 
 /*******************************************************************************
  **
- **        READ & WRITE FUNCTIONS (START)
+ **		READ & WRITE FUNCTIONS (START)
  **
  *******************************************************************************/
 
@@ -276,15 +158,15 @@ gckDEBUGFS_DIR_Deinit(
  **
  **  _ReadFromNode
  **
- **    1) reading bytes out of a circular buffer with wraparound.
- **    2)returns caddr_t, pointer to data read, which the caller must free.
- **    3) length is (a pointer to) the number of bytes to be read, which will be set by this function to
- **        be the number of bytes actually returned
+ **	1) reading bytes out of a circular buffer with wraparound.
+ **	2)returns caddr_t, pointer to data read, which the caller must free.
+ **	3) length is (a pointer to) the number of bytes to be read, which will be set by this function to
+ **	    be the number of bytes actually returned
  **
  *******************************************************************************/
 static caddr_t
 _ReadFromNode (
-                gcsDEBUGFS_Node* Node ,
+                gcsDebugFileSystemNode* Node ,
                 size_t *Length ,
                 loff_t *Offset
                 )
@@ -346,7 +228,7 @@ _ReadFromNode (
  *********************************************************************************/
 static void
 _WriteToNode (
-               gcsDEBUGFS_Node* Node ,
+               gcsDebugFileSystemNode* Node ,
                caddr_t Buf ,
                int Length
                )
@@ -361,7 +243,7 @@ _WriteToNode (
 
         /* in case of overflow, figure out where the new buffer will
          * begin.  we start by figuring out where the current buffer ENDS:
-         * node->parent->offset +  gcmkNODE_QLEN.    we then advance the end-offset
+         * node->parent->offset +  gcmkNODE_QLEN.	we then advance the end-offset
          * by the Length of the current write, and work backwards to
          * figure out what the oldest unoverwritten data will be (i.e.,
          * size of the buffer). */
@@ -389,9 +271,10 @@ _WriteToNode (
     }
 }
 
+
 /*******************************************************************************
  **
- **         PRINTING UTILITY (START)
+ ** 		PRINTING UTILITY (START)
  **
  *******************************************************************************/
 
@@ -426,7 +309,7 @@ _GetArgumentSize (
  *******************************************************************************/
 static ssize_t
 _AppendString (
-                IN gcsDEBUGFS_Node* Node ,
+                IN gcsDebugFileSystemNode* Node ,
                 IN gctCONST_STRING String ,
                 IN int Length
                 )
@@ -458,28 +341,18 @@ _AppendString (
  **
  **
  *******************************************************************************/
-static ssize_t
+static void
 _DebugFSPrint (
                 IN unsigned int ArgumentSize ,
                 IN const char* Message ,
-                IN gctDBGARGS * Arguments
+                IN gctDBGARGS Arguments
 
                 )
 {
     char buffer[MAX_LINE_SIZE] ;
     int len ;
-    ssize_t res=0;
-
-   if(in_interrupt())
-    {
-        return - ERESTARTSYS ;
-    }
-
-    if(down_interruptible( gcmkNODE_SEM ( gc_dbgfs.currentNode ) ) )
-    {
-         return - ERESTARTSYS ;
-    }
-    len = vsnprintf ( buffer , sizeof (buffer ) , Message , *( va_list * ) Arguments ) ;
+    down ( gcmkNODE_SEM ( gc_dbgfs.currentNode ) ) ;
+    len = vsnprintf ( buffer , sizeof (buffer ) , Message , *( va_list * ) & Arguments ) ;
     buffer[len] = '\0' ;
 
     /* Add end-of-line if missing. */
@@ -488,10 +361,9 @@ _DebugFSPrint (
         buffer[len ++] = '\n' ;
         buffer[len] = '\0' ;
     }
-    res = _AppendString ( gc_dbgfs.currentNode , buffer , len ) ;
+    _AppendString ( gc_dbgfs.currentNode , buffer , len ) ;
     up ( gcmkNODE_SEM ( gc_dbgfs.currentNode ) ) ;
     wake_up_interruptible ( gcmkNODE_READQ ( gc_dbgfs.currentNode ) ) ; /* blocked in read*/
-    return res;
 }
 
 /*******************************************************************************
@@ -503,15 +375,15 @@ _DebugFSPrint (
 /*******************************************************************************
  **
  **  find the vivlog structure associated with an inode.
- **      returns a    pointer to the structure if found, NULL if not found
+ **  	returns a	pointer to the structure if found, NULL if not found
  **
  *******************************************************************************/
-static gcsDEBUGFS_Node*
+static gcsDebugFileSystemNode*
 _GetNodeInfo (
                IN struct inode *Inode
                )
 {
-    gcsDEBUGFS_Node* node ;
+    gcsDebugFileSystemNode* node ;
 
     if ( Inode == NULL )
         return NULL ;
@@ -538,7 +410,7 @@ _DebugFSRead (
 {
     int retval ;
     caddr_t data_to_return ;
-    gcsDEBUGFS_Node* node ;
+    gcsDebugFileSystemNode* node ;
     /* get the metadata about this emlog */
     if ( ( node = _GetNodeInfo ( file->f_dentry->d_inode ) ) == NULL )
     {
@@ -605,7 +477,7 @@ _DebugFSWrite (
 {
     caddr_t message = NULL ;
     int n ;
-    gcsDEBUGFS_Node*node ;
+    gcsDebugFileSystemNode*node ;
 
     /* get the metadata about this log */
     if ( ( node = _GetNodeInfo ( file->f_dentry->d_inode ) ) == NULL )
@@ -630,7 +502,6 @@ _DebugFSWrite (
         return - ENOMEM ;
     }
 
-
     /* copy into our temp buffer */
     if ( copy_from_user ( message , buffer , n ) > 0 )
     {
@@ -653,230 +524,6 @@ _DebugFSWrite (
     return n ;
 }
 
-int dumpProcess = 0;
-
-void
-_PrintCounter(
-    struct seq_file *file,
-    gcsDATABASE_COUNTERS * counter,
-    gctCONST_STRING Name
-    )
-{
-    seq_printf(file,"Counter: %s\n", Name);
-
-    seq_printf(file,"%-9s%10s","", "All");
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Current");
-
-    seq_printf(file,"%10lld", counter->bytes);
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Maximum");
-
-    seq_printf(file,"%10lld", counter->maxBytes);
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Total");
-
-    seq_printf(file,"%10lld", counter->totalBytes);
-
-    seq_printf(file, "\n");
-}
-
-void
-_ShowCounters(
-    struct seq_file *file,
-    gcsDATABASE_PTR database
-    )
-{
-    gctUINT i = 0;
-    gcsDATABASE_COUNTERS * counter;
-    gcsDATABASE_COUNTERS * nonPaged;
-
-    static gctCONST_STRING surfaceTypes[] = {
-        "UNKNOWN",
-        "Index",
-        "Vertex",
-        "Texture",
-        "RT",
-        "Depth",
-        "Bitmap",
-        "TS",
-        "Image",
-        "Mask",
-        "Scissor",
-        "HZDepth",
-    };
-
-    /* Get pointer to counters. */
-    counter = &database->vidMem;
-
-    nonPaged = &database->nonPaged;
-
-    seq_printf(file,"Counter: vidMem (for each surface type)\n");
-
-    seq_printf(file,"%-9s%10s","", "All");
-
-    for (i = 1; i < gcvSURF_NUM_TYPES; i++)
-    {
-        counter = &database->vidMemType[i];
-
-        seq_printf(file, "%10s",surfaceTypes[i]);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Current");
-
-    seq_printf(file,"%10lld", database->vidMem.bytes);
-
-    for (i = 1; i < gcvSURF_NUM_TYPES; i++)
-    {
-        counter = &database->vidMemType[i];
-
-        seq_printf(file,"%10lld", counter->bytes);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Maximum");
-
-    seq_printf(file,"%10lld", database->vidMem.maxBytes);
-
-    for (i = 1; i < gcvSURF_NUM_TYPES; i++)
-    {
-        counter = &database->vidMemType[i];
-
-        seq_printf(file,"%10lld", counter->maxBytes);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Total");
-
-    seq_printf(file,"%10lld", database->vidMem.totalBytes);
-
-    for (i = 1; i < gcvSURF_NUM_TYPES; i++)
-    {
-        counter = &database->vidMemType[i];
-
-        seq_printf(file,"%10lld", counter->totalBytes);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"Counter: vidMem (for each pool)\n");
-
-    seq_printf(file,"%-9s%10s","", "All");
-
-    for (i = 1; i < gcvPOOL_NUMBER_OF_POOLS; i++)
-    {
-        seq_printf(file, "%10d", i);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Current");
-
-    seq_printf(file,"%10lld", database->vidMem.bytes);
-
-    for (i = 1; i < gcvPOOL_NUMBER_OF_POOLS; i++)
-    {
-        counter = &database->vidMemPool[i];
-
-        seq_printf(file,"%10lld", counter->bytes);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Maximum");
-
-    seq_printf(file,"%10lld", database->vidMem.maxBytes);
-
-    for (i = 1; i < gcvPOOL_NUMBER_OF_POOLS; i++)
-    {
-        counter = &database->vidMemPool[i];
-
-        seq_printf(file,"%10lld", counter->maxBytes);
-    }
-
-    seq_printf(file, "\n");
-
-    seq_printf(file,"%-9s","Total");
-
-    seq_printf(file,"%10lld", database->vidMem.totalBytes);
-
-    for (i = 1; i < gcvPOOL_NUMBER_OF_POOLS; i++)
-    {
-        counter = &database->vidMemPool[i];
-
-        seq_printf(file,"%10lld", counter->totalBytes);
-    }
-
-    seq_printf(file, "\n");
-
-    /* Print nonPaged. */
-    _PrintCounter(file, &database->nonPaged, "nonPaged");
-    _PrintCounter(file, &database->contiguous, "contiguous");
-    _PrintCounter(file, &database->mapUserMemory, "mapUserMemory");
-    _PrintCounter(file, &database->mapMemory, "mapMemory");
-}
-
-gckKERNEL
-_GetValidKernel(
-    gckGALDEVICE Device
-);
-static int vidmem_show(struct seq_file *file, void *unused)
-{
-    gceSTATUS status;
-    gcsDATABASE_PTR database;
-    gckGALDEVICE device = file->private;
-
-    gckKERNEL kernel = _GetValidKernel(device);
-    if(kernel == gcvNULL)
-    {
-        return 0;
-    }
-
-    /* Find the database. */
-    gcmkONERROR(
-        gckKERNEL_FindDatabase(kernel, dumpProcess, gcvFALSE, &database));
-
-    seq_printf(file, "VidMem Usage (Process %d):\n", dumpProcess);
-
-    _ShowCounters(file, database);
-
-    return 0;
-
-OnError:
-    return 0;
-}
-
-static int
-vidmem_open(
-    struct inode *inode,
-    struct file *file
-    )
-{
-    return single_open(file, vidmem_show, inode->i_private);
-}
-
-static ssize_t
-vidmem_write(
-    struct file *file,
-    const char __user *buf,
-    size_t count,
-    loff_t *pos
-    )
-{
-    dumpProcess = simple_strtol(buf, NULL, 0);
-    return count;
-}
-
 /*******************************************************************************
  **
  ** File Operations Table
@@ -888,14 +535,6 @@ static const struct file_operations debugfs_operations = {
                                                           .write = _DebugFSWrite ,
 } ;
 
-static const struct file_operations vidmem_operations = {
-    .owner = THIS_MODULE ,
-    .open = vidmem_open,
-    .read = seq_read,
-    .write = vidmem_write,
-    .llseek = seq_lseek,
-} ;
-
 /*******************************************************************************
  **
  **                             INTERFACE FUNCTIONS (START)
@@ -904,7 +543,7 @@ static const struct file_operations vidmem_operations = {
 
 /*******************************************************************************
  **
- **  gckDEBUGFS_IsEnabled
+ **  gckDebugFileSystemIsEnabled
  **
  **
  **  INPUT:
@@ -915,13 +554,13 @@ static const struct file_operations vidmem_operations = {
 
 
 gctINT
-gckDEBUGFS_IsEnabled ( void )
+gckDebugFileSystemIsEnabled ( void )
 {
     return gc_dbgfs.isInited ;
 }
 /*******************************************************************************
  **
- **  gckDEBUGFS_Initialize
+ **  gckDebugFileSystemInitialize
  **
  **
  **  INPUT:
@@ -931,7 +570,7 @@ gckDEBUGFS_IsEnabled ( void )
  *******************************************************************************/
 
 gctINT
-gckDEBUGFS_Initialize ( void )
+gckDebugFileSystemInitialize ( void )
 {
     if ( ! gc_dbgfs.isInited )
     {
@@ -943,7 +582,7 @@ gckDEBUGFS_Initialize ( void )
 }
 /*******************************************************************************
  **
- **  gckDEBUGFS_Terminate
+ **  gckDebugFileSystemTerminate
  **
  **
  **  INPUT:
@@ -953,17 +592,17 @@ gckDEBUGFS_Initialize ( void )
  *******************************************************************************/
 
 gctINT
-gckDEBUGFS_Terminate ( void )
+gckDebugFileSystemTerminate ( void )
 {
-    gcsDEBUGFS_Node * next = gcvNULL ;
-    gcsDEBUGFS_Node * temp = gcvNULL ;
+    gcsDebugFileSystemNode * next = gcvNULL ;
+    gcsDebugFileSystemNode * temp = gcvNULL ;
     if ( gc_dbgfs.isInited )
     {
         temp = gc_dbgfs.linkedlist ;
         while ( temp != gcvNULL )
         {
             next = temp->next ;
-            gckDEBUGFS_FreeNode ( temp ) ;
+            gckDebugFileSystemFreeNode ( temp ) ;
             kfree ( temp ) ;
             temp = next ;
         }
@@ -975,34 +614,33 @@ gckDEBUGFS_Terminate ( void )
 
 /*******************************************************************************
  **
- **  gckDEBUGFS_CreateNode
+ **  gckDebugFileSystemCreateNode
  **
  **
  **  INPUT:
  **
  **  OUTPUT:
  **
- **     gckDEBUGFS_FreeNode * Device
- **          Pointer to a variable receiving the gcsDEBUGFS_Node object pointer on
- **          success.
+ **	 gckDebugFileSystemFreeNode * Device
+ **		  Pointer to a variable receiving the gcsDebugFileSystemNode object pointer on
+ **		  success.
  *********************************************************************************/
 
 gctINT
-gckDEBUGFS_CreateNode (
-    IN gctPOINTER Device,
-    IN gctINT SizeInKB ,
-    IN struct dentry * Root ,
-    IN gctCONST_STRING NodeName ,
-    OUT gcsDEBUGFS_Node **Node
-    )
+gckDebugFileSystemCreateNode (
+                               IN gctINT SizeInKB ,
+                               IN gctCONST_STRING ParentName ,
+                               IN gctCONST_STRING NodeName ,
+                               OUT gcsDebugFileSystemNode **Node
+                               )
 {
-    gcsDEBUGFS_Node*node ;
+    gcsDebugFileSystemNode*node ;
     /* allocate space for our metadata and initialize it */
-    if ( ( node = kmalloc ( sizeof (gcsDEBUGFS_Node ) , GFP_KERNEL ) ) == NULL )
+    if ( ( node = kmalloc ( sizeof (gcsDebugFileSystemNode ) , GFP_KERNEL ) ) == NULL )
         goto struct_malloc_failed ;
 
     /*Zero it out*/
-    memset ( node , 0 , sizeof (gcsDEBUGFS_Node ) ) ;
+    memset ( node , 0 , sizeof (gcsDebugFileSystemNode ) ) ;
 
     /*Init the sync primitives*/
 #if defined(DECLARE_WAIT_QUEUE_HEAD)
@@ -1019,34 +657,28 @@ gckDEBUGFS_CreateNode (
     sema_init ( gcmkNODE_SEM ( node ) , 1 ) ;
     /*End the sync primitives*/
 
+
+    /* figure out how much of a buffer this should be and allocate the buffer */
+    node->size = 1024 * SizeInKB ;
+    if ( ( node->data = ( char * ) vmalloc ( sizeof (char ) * node->size ) ) == NULL )
+        goto data_malloc_failed ;
+
     /*creating the debug file system*/
-    node->parent = Root;
+    node->parent = debugfs_create_dir ( ParentName , NULL ) ;
 
-    if (SizeInKB)
-    {
-        /* figure out how much of a buffer this should be and allocate the buffer */
-        node->size = 1024 * SizeInKB ;
-        if ( ( node->data = ( char * ) vmalloc ( sizeof (char ) * node->size ) ) == NULL )
-            goto data_malloc_failed ;
-
-        /*creating the file*/
-        node->filen = debugfs_create_file(NodeName, S_IRUGO|S_IWUSR, node->parent, NULL,
-                                          &debugfs_operations);
-    }
-
-    node->vidmem
-        = debugfs_create_file("vidmem", S_IRUGO|S_IWUSR, node->parent, Device, &vidmem_operations);
+    /*creating the file*/
+    node->filen = debugfs_create_file ( NodeName , S_IRUGO | S_IWUSR , node->parent , NULL ,
+                                        &debugfs_operations ) ;
 
     /* add it to our linked list */
     node->next = gc_dbgfs.linkedlist ;
     gc_dbgfs.linkedlist = node ;
 
-
     /* pass the struct back */
     *Node = node ;
     return 0 ;
 
-
+    vfree ( node->data ) ;
 data_malloc_failed:
     kfree ( node ) ;
 struct_malloc_failed:
@@ -1055,7 +687,7 @@ struct_malloc_failed:
 
 /*******************************************************************************
  **
- **  gckDEBUGFS_FreeNode
+ **  gckDebugFileSystemFreeNode
  **
  **
  **  INPUT:
@@ -1064,12 +696,12 @@ struct_malloc_failed:
  **
  *******************************************************************************/
 void
-gckDEBUGFS_FreeNode (
-                             IN gcsDEBUGFS_Node * Node
+gckDebugFileSystemFreeNode (
+                             IN gcsDebugFileSystemNode * Node
                              )
 {
 
-    gcsDEBUGFS_Node **ptr ;
+    gcsDebugFileSystemNode **ptr ;
 
     if ( Node == NULL )
     {
@@ -1082,14 +714,13 @@ gckDEBUGFS_FreeNode (
     vfree ( Node->data ) ;
 
     /*Close Debug fs*/
-    if (Node->vidmem)
-    {
-        debugfs_remove(Node->vidmem);
-    }
-
     if ( Node->filen )
     {
         debugfs_remove ( Node->filen ) ;
+    }
+    if ( Node->parent )
+    {
+        debugfs_remove ( Node->parent ) ;
     }
 
     /* now delete the node from the linked list */
@@ -1110,7 +741,7 @@ gckDEBUGFS_FreeNode (
 
 /*******************************************************************************
  **
- **   gckDEBUGFS_SetCurrentNode
+ **   gckDebugFileSystemSetCurrentNode
  **
  **
  **  INPUT:
@@ -1119,8 +750,8 @@ gckDEBUGFS_FreeNode (
  **
  *******************************************************************************/
 void
-gckDEBUGFS_SetCurrentNode (
-                                   IN gcsDEBUGFS_Node * Node
+gckDebugFileSystemSetCurrentNode (
+                                   IN gcsDebugFileSystemNode * Node
                                    )
 {
     gc_dbgfs.currentNode = Node ;
@@ -1128,7 +759,7 @@ gckDEBUGFS_SetCurrentNode (
 
 /*******************************************************************************
  **
- **   gckDEBUGFS_GetCurrentNode
+ **   gckDebugFileSystemGetCurrentNode
  **
  **
  **  INPUT:
@@ -1137,8 +768,8 @@ gckDEBUGFS_SetCurrentNode (
  **
  *******************************************************************************/
 void
-gckDEBUGFS_GetCurrentNode (
-                                   OUT gcsDEBUGFS_Node ** Node
+gckDebugFileSystemGetCurrentNode (
+                                   OUT gcsDebugFileSystemNode ** Node
                                    )
 {
     *Node = gc_dbgfs.currentNode ;
@@ -1146,7 +777,7 @@ gckDEBUGFS_GetCurrentNode (
 
 /*******************************************************************************
  **
- **   gckDEBUGFS_Print
+ **   gckDebugFileSystemPrint
  **
  **
  **  INPUT:
@@ -1154,13 +785,11 @@ gckDEBUGFS_GetCurrentNode (
  **  OUTPUT:
  **
  *******************************************************************************/
-ssize_t
-gckDEBUGFS_Print (
+void
+gckDebugFileSystemPrint (
                           IN gctCONST_STRING Message ,
                           ...
                           )
 {
-    ssize_t _debugfs_res;
-    gcmkDEBUGFS_PRINT ( _GetArgumentSize ( Message ) , Message ) ;
-    return _debugfs_res;
+    gcmkDBGFSPRINT ( _GetArgumentSize ( Message ) , Message ) ;
 }

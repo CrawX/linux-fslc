@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    Copyright (C) 2005 - 2013 by Vivante Corp.
 *
 *    This program is free software; you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -22,10 +22,10 @@
 #ifndef __gc_hal_engine_h_
 #define __gc_hal_engine_h_
 
+#ifndef VIVANTE_NO_3D
 #include "gc_hal_types.h"
 #include "gc_hal_enum.h"
 
-#if gcdENABLE_3D
 #if gcdENABLE_VG
 #include "gc_hal_engine_vg.h"
 #endif
@@ -44,39 +44,159 @@ typedef struct _gcoTEXTURE *            gcoTEXTURE;
 typedef struct _gcoINDEX *              gcoINDEX;
 typedef struct _gcsVERTEX_ATTRIBUTES *  gcsVERTEX_ATTRIBUTES_PTR;
 typedef struct _gcoVERTEXARRAY *        gcoVERTEXARRAY;
-typedef struct _gcoBUFOBJ *             gcoBUFOBJ;
 
 #define gcdATTRIBUTE_COUNT              16
 
-typedef enum _gcePROGRAM_STAGE
-{
-    gcvPROGRAM_STAGE_VERTEX   = 0x0,
-    gcvPROGRAM_STAGE_TES      = 0x1,
-    gcvPROGRAM_STAGE_TCS      = 0x2,
-    gcvPROGRAM_STAGE_GEOMETRY = 0x3,
-    gcvPROGRAM_STAGE_FRAGMENT = 0x4,
-    gcvPROGRAM_STAGE_COMPUTE  = 0x5,
-    gcvPROGRAM_STAGE_OPENCL   = 0x6,
-    gcvPROGRAM_STAGE_LAST
-}
-gcePROGRAM_STAGE;
+/******************************************************************************\
+********************************* Enumerations *********************************
+\******************************************************************************/
 
-typedef enum _gcePROGRAM_STAGE_BIT
+/* Shading format. */
+typedef enum _gceSHADING
 {
-    gcvPROGRAM_STAGE_VERTEX_BIT   = 1 << gcvPROGRAM_STAGE_VERTEX,
-    gcvPROGRAM_STAGE_TES_BIT      = 1 << gcvPROGRAM_STAGE_TES,
-    gcvPROGRAM_STAGE_TCS_BIT      = 1 << gcvPROGRAM_STAGE_TCS,
-    gcvPROGRAM_STAGE_GEOMETRY_BIT = 1 << gcvPROGRAM_STAGE_GEOMETRY,
-    gcvPROGRAM_STAGE_FRAGMENT_BIT = 1 << gcvPROGRAM_STAGE_FRAGMENT,
-    gcvPROGRAM_STAGE_COMPUTE_BIT  = 1 << gcvPROGRAM_STAGE_COMPUTE,
-    gcvPROGRAM_STAGE_OPENCL_BIT   = 1 << gcvPROGRAM_STAGE_OPENCL,
+    gcvSHADING_SMOOTH,
+    gcvSHADING_FLAT_D3D,
+    gcvSHADING_FLAT_OPENGL,
 }
-gcePROGRAM_STAGE_BIT;
+gceSHADING;
 
+/* Culling modes. */
+typedef enum _gceCULL
+{
+    gcvCULL_NONE,
+    gcvCULL_CCW,
+    gcvCULL_CW,
+}
+gceCULL;
+
+/* Fill modes. */
+typedef enum _gceFILL
+{
+    gcvFILL_POINT,
+    gcvFILL_WIRE_FRAME,
+    gcvFILL_SOLID,
+}
+gceFILL;
+
+/* Compare modes. */
+typedef enum _gceCOMPARE
+{
+    gcvCOMPARE_NEVER,
+    gcvCOMPARE_NOT_EQUAL,
+    gcvCOMPARE_LESS,
+    gcvCOMPARE_LESS_OR_EQUAL,
+    gcvCOMPARE_EQUAL,
+    gcvCOMPARE_GREATER,
+    gcvCOMPARE_GREATER_OR_EQUAL,
+    gcvCOMPARE_ALWAYS,
+    gcvCOMPARE_INVALID = -1
+}
+gceCOMPARE;
+
+/* Stencil modes. */
+typedef enum _gceSTENCIL_MODE
+{
+    gcvSTENCIL_NONE,
+    gcvSTENCIL_SINGLE_SIDED,
+    gcvSTENCIL_DOUBLE_SIDED,
+}
+gceSTENCIL_MODE;
+
+/* Stencil operations. */
+typedef enum _gceSTENCIL_OPERATION
+{
+    gcvSTENCIL_KEEP,
+    gcvSTENCIL_REPLACE,
+    gcvSTENCIL_ZERO,
+    gcvSTENCIL_INVERT,
+    gcvSTENCIL_INCREMENT,
+    gcvSTENCIL_DECREMENT,
+    gcvSTENCIL_INCREMENT_SATURATE,
+    gcvSTENCIL_DECREMENT_SATURATE,
+    gcvSTENCIL_OPERATION_INVALID = -1
+}
+gceSTENCIL_OPERATION;
+
+/* Stencil selection. */
+typedef enum _gceSTENCIL_WHERE
+{
+    gcvSTENCIL_FRONT,
+    gcvSTENCIL_BACK,
+}
+gceSTENCIL_WHERE;
+
+/* Texture addressing selection. */
+typedef enum _gceTEXTURE_WHICH
+{
+    gcvTEXTURE_S,
+    gcvTEXTURE_T,
+    gcvTEXTURE_R,
+}
+gceTEXTURE_WHICH;
+
+/* Texture addressing modes. */
+typedef enum _gceTEXTURE_ADDRESSING
+{
+    gcvTEXTURE_WRAP,
+    gcvTEXTURE_CLAMP,
+    gcvTEXTURE_BORDER,
+    gcvTEXTURE_MIRROR,
+    gcvTEXTURE_MIRROR_ONCE,
+}
+gceTEXTURE_ADDRESSING;
+
+/* Texture filters. */
+typedef enum _gceTEXTURE_FILTER
+{
+    gcvTEXTURE_NONE,
+    gcvTEXTURE_POINT,
+    gcvTEXTURE_LINEAR,
+    gcvTEXTURE_ANISOTROPIC,
+}
+gceTEXTURE_FILTER;
+
+/* Primitive types. */
+typedef enum _gcePRIMITIVE
+{
+    gcvPRIMITIVE_POINT_LIST,
+    gcvPRIMITIVE_LINE_LIST,
+    gcvPRIMITIVE_LINE_STRIP,
+    gcvPRIMITIVE_LINE_LOOP,
+    gcvPRIMITIVE_TRIANGLE_LIST,
+    gcvPRIMITIVE_TRIANGLE_STRIP,
+    gcvPRIMITIVE_TRIANGLE_FAN,
+    gcvPRIMITIVE_RECTANGLE,
+}
+gcePRIMITIVE;
+
+/* Index types. */
+typedef enum _gceINDEX_TYPE
+{
+    gcvINDEX_8,
+    gcvINDEX_16,
+    gcvINDEX_32,
+}
+gceINDEX_TYPE;
 
 /******************************************************************************\
 ********************************* gcoHAL Object *********************************
 \******************************************************************************/
+
+/* Query the target capabilities. */
+gceSTATUS
+gcoHAL_QueryTargetCaps(
+    IN gcoHAL Hal,
+    OUT gctUINT * MaxWidth,
+    OUT gctUINT * MaxHeight,
+    OUT gctUINT * MultiTargetCount,
+    OUT gctUINT * MaxSamples
+    );
+
+gceSTATUS
+gcoHAL_SetDepthOnly(
+    IN gcoHAL Hal,
+    IN gctBOOL Enable
+    );
 
 gceSTATUS
 gcoHAL_QueryShaderCaps(
@@ -85,31 +205,6 @@ gcoHAL_QueryShaderCaps(
     OUT gctUINT * FragmentUniforms,
     OUT gctUINT * Varyings
     );
-
-gceSTATUS
-gcoHAL_QueryShaderCapsEx(
-                         IN gcoHAL Hal,
-                         OUT gctUINT * ShaderCoreCount,
-                         OUT gctUINT * ThreadCount,
-                         OUT gctUINT * VertexInstructionCount,
-                         OUT gctUINT * FragmentInstructionCount
-                         );
-
-gceSTATUS
-gcoHAL_QuerySamplerBase(
-                        IN  gcoHAL Hal,
-                        OUT gctUINT32 * VertexCount,
-                        OUT gctINT_PTR VertexBase,
-                        OUT gctUINT32 * FragmentCount,
-                        OUT gctINT_PTR FragmentBase
-                        );
-
-gceSTATUS
-gcoHAL_QueryUniformBase(
-					    IN  gcoHAL Hal,
-					    OUT gctUINT32 * VertexBase,
-					    OUT gctUINT32 * FragmentBase
-					    );
 
 gceSTATUS
 gcoHAL_QueryTextureCaps(
@@ -144,197 +239,45 @@ gcoHAL_QueryStreamCaps(
 
 /*----------------------------------------------------------------------------*/
 /*--------------------------------- gcoSURF 3D --------------------------------*/
-typedef enum _gceBLIT_FLAG
-{
-    gcvBLIT_FLAG_SKIP_DEPTH_WRITE   = 0x1,
-    gcvBLIT_FLAG_SKIP_STENCIL_WRITE = 0x2,
-} gceBLIT_FLAG;
 
-typedef struct _gcsSURF_BLIT_ARGS
-{
-    gcoSURF     srcSurface;
-    gctINT      srcX, srcY, srcZ;
-    gctINT      srcWidth, srcHeight, srcDepth;
-    gcoSURF     dstSurface;
-    gctINT      dstX, dstY, dstZ;
-    gctINT      dstWidth, dstHeight, dstDepth;
-    gctBOOL     xReverse;
-    gctBOOL     yReverse;
-    gctBOOL     scissorTest;
-    gcsRECT     scissor;
-    gctUINT     flags;
-}
-gcsSURF_BLIT_ARGS;
-
-
-
-
-/* Clear flags. */
-typedef enum _gceCLEAR
-{
-    gcvCLEAR_COLOR              = 0x1,
-    gcvCLEAR_DEPTH              = 0x2,
-    gcvCLEAR_STENCIL            = 0x4,
-    gcvCLEAR_HZ                 = 0x8,
-    gcvCLEAR_HAS_VAA            = 0x10,
-    gcvCLEAR_WITH_GPU_ONLY      = 0x100,
-    gcvCLEAR_WITH_CPU_ONLY      = 0x200,
-}
-gceCLEAR;
-
-typedef struct _gcsSURF_CLEAR_ARGS
-{
-    /*
-    ** Color to fill the color portion of the framebuffer when clear
-    ** is called.
-    */
-    struct {
-    gcuVALUE r;
-    gcuVALUE g;
-    gcuVALUE b;
-    gcuVALUE a;
-    /*
-    ** Color has multiple value type so we must specify it.
-    */
-    gceVALUE_TYPE valueType;
-    } color;
-
-    gcuVALUE depth;
-
-    gctUINT  stencil;
-
-
-
-    /*
-    ** stencil bit-wise mask
-    */
-    gctUINT8 stencilMask;
-    /*
-    ** Depth Write Mask
-    */
-    gctBOOL depthMask;
-    /*
-    ** 4-bit channel Mask: ABGR:MSB->LSB
-    */
-    gctUINT8 colorMask;
-    /*
-    ** If ClearRect is NULL, it means full clear
-    */
-    gcsRECT_PTR clearRect;
-    /*
-    ** clear flags
-    */
-    gceCLEAR  flags;
-
-    /*
-    ** Offset in surface to cube/array/3D
-    */
-    gctUINT32 offset;
-
-} gcsSURF_CLEAR_ARGS;
-
-
-typedef gcsSURF_CLEAR_ARGS* gcsSURF_CLEAR_ARGS_PTR;
-
-typedef struct _gscSURF_BLITDRAW_BLIT
-{
-    gcoSURF  srcSurface;
-    gcoSURF  dstSurface;
-    gcsRECT  srcRect;
-    gcsRECT  dstRect;
-    gceTEXTURE_FILTER  filterMode;
-    gctBOOL  xReverse;
-    gctBOOL  yReverse;
-    gctBOOL  scissorEnabled;
-    gcsRECT  scissor;
-}gscSURF_BLITDRAW_BLIT;
-
-
-typedef enum _gceBLITDRAW_TYPE
-{
-    gcvBLITDRAW_CLEAR = 0,
-    gcvBLITDRAW_BLIT  = 1,
-
-    /* last number, not a real type */
-    gcvBLITDRAW_NUM_TYPE
- }
-gceBLITDRAW_TYPE;
-
-
-typedef struct _gscSURF_BLITDRAW_ARGS
-{
-    /* always the fist member */
-    gceHAL_ARG_VERSION version;
-
-    union _gcsSURF_BLITDRAW_ARGS_UNION
-    {
-       struct _gscSURF_BLITDRAW_ARG_v1
-       {
-            /* Whether it's clear or blit operation, can be extended. */
-            gceBLITDRAW_TYPE type;
-
-            union _gscSURF_BLITDRAW_UNION
-            {
-                gscSURF_BLITDRAW_BLIT blit;
-
-                struct _gscSURF_BLITDRAW_CLEAR
-                {
-                    gcsSURF_CLEAR_ARGS clearArgs;
-                    gcoSURF rtSurface;
-                    gcoSURF dsSurface;
-                } clear;
-            } u;
-       } v1;
-    } uArgs;
-}
-gcsSURF_BLITDRAW_ARGS;
-
-
-typedef struct _gcsSURF_RESOLVE_ARGS
-{
-    gceHAL_ARG_VERSION version;
-    union _gcsSURF_RESOLVE_ARGS_UNION
-    {
-        struct _gcsSURF_RESOLVE_ARG_v1
-        {
-            gctBOOL yInverted;
-        }v1;
-    } uArgs;
-}
-gcsSURF_RESOLVE_ARGS;
-
-
-/* CPU Blit with format (including linear <-> tile) conversion*/
+/* Copy surface. */
 gceSTATUS
-gcoSURF_BlitCPU(
-    gcsSURF_BLIT_ARGS* args
+gcoSURF_Copy(
+    IN gcoSURF Surface,
+    IN gcoSURF Source
     );
 
-
-gceSTATUS
-gcoSURF_BlitDraw(
-    IN gcsSURF_BLITDRAW_ARGS *args
-    );
-#endif  /* gcdENABLE_3D */
-
-
-
-#if gcdENABLE_3D
-/* Clear surface function. */
+/* Clear surface. */
 gceSTATUS
 gcoSURF_Clear(
     IN gcoSURF Surface,
-    IN gcsSURF_CLEAR_ARGS_PTR  clearArg
+    IN gctUINT Flags
     );
 
-/* Preserve pixels from source. */
+/* Set number of samples for a gcoSURF object. */
 gceSTATUS
-gcoSURF_Preserve(
-    IN gcoSURF Source,
-    IN gcoSURF Dest,
-    IN gcsRECT_PTR MaskRect
+gcoSURF_SetSamples(
+    IN gcoSURF Surface,
+    IN gctUINT Samples
     );
 
+/* Get the number of samples per pixel. */
+gceSTATUS
+gcoSURF_GetSamples(
+    IN gcoSURF Surface,
+    OUT gctUINT_PTR Samples
+    );
+
+/* Clear rectangular surface. */
+gceSTATUS
+gcoSURF_ClearRect(
+    IN gcoSURF Surface,
+    IN gctINT Left,
+    IN gctINT Top,
+    IN gctINT Right,
+    IN gctINT Bottom,
+    IN gctUINT Flags
+    );
 
 /* TO BE REMOVED */
     gceSTATUS
@@ -381,16 +324,7 @@ gcoSURF_Resolve(
     );
 
 gceSTATUS
-gcoSURF_ResolveEx(
-    IN gcoSURF SrcSurface,
-    IN gcoSURF DestSurface,
-    IN gcsSURF_RESOLVE_ARGS *args
-    );
-
-
-/* Resolve rectangular area of a surface. */
-gceSTATUS
-gcoSURF_ResolveRect(
+gcoSURF_IsHWResolveable(
     IN gcoSURF SrcSurface,
     IN gcoSURF DestSurface,
     IN gcsPOINT_PTR SrcOrigin,
@@ -400,27 +334,7 @@ gcoSURF_ResolveRect(
 
 /* Resolve rectangular area of a surface. */
 gceSTATUS
-gcoSURF_ResolveRectEx(
-    IN gcoSURF SrcSurface,
-    IN gcoSURF DestSurface,
-    IN gcsPOINT_PTR SrcOrigin,
-    IN gcsPOINT_PTR DestOrigin,
-    IN gcsPOINT_PTR RectSize,
-    IN gcsSURF_RESOLVE_ARGS *args
-    );
-
-
-gceSTATUS
-gcoSURF_GetResolveAlignment(
-    IN gcoSURF Surface,
-    OUT gctUINT *originX,
-    OUT gctUINT *originY,
-    OUT gctUINT *sizeX,
-    OUT gctUINT *sizeY
-    );
-
-gceSTATUS
-gcoSURF_IsHWResolveable(
+gcoSURF_ResolveRect(
     IN gcoSURF SrcSurface,
     IN gcoSURF DestSurface,
     IN gcsPOINT_PTR SrcOrigin,
@@ -445,26 +359,11 @@ gcoSURF_IsFormatRenderableAsRT(
     IN gcoSURF Surface
     );
 
+#if gcdSYNC
 gceSTATUS
 gcoSURF_GetFence(
     IN gcoSURF Surface
     );
-
-gceSTATUS
-gcoBUFOBJ_GetFence(
-    IN gcoBUFOBJ bufObj
-    );
-
-gceSTATUS
-gcoBUFOBJ_WaitFence(
-    IN gcoBUFOBJ bufObj
-    );
-
-gceSTATUS
-gcoBUFOBJ_IsFenceEnabled(
-    IN gcoBUFOBJ bufObj
-    );
-
 gceSTATUS
 gcoSURF_WaitFence(
     IN gcoSURF Surface
@@ -489,30 +388,7 @@ gceSTATUS
 gcoINDEX_WaitFence(
     IN gcoINDEX index
     );
-
-gceSTATUS
-gcoSURF_3DBlitClearRect(
-    IN gcoSURF Surface,
-    IN gcsSURF_CLEAR_ARGS_PTR ClearArgs
-    );
-
-
-gceSTATUS
-gcoSURF_3DBlitBltRect(
-    IN gcoSURF SrcSurf,
-    IN gcoSURF DestSurf,
-    IN gcsPOINT_PTR SrcOrigin,
-    IN gcsPOINT_PTR DestOrigin,
-    IN gcsPOINT_PTR RectSize
-    );
-
-gceSTATUS
-gcoSURF_3DBlitCopy(
-    IN gctUINT32 SrcAddress,
-    IN gctUINT32 DestAddress,
-    IN gctUINT32 Bytes
-    );
-
+#endif
 
 /******************************************************************************\
 ******************************** gcoINDEX Object *******************************
@@ -587,7 +463,7 @@ gcoINDEX_Upload(
 gceSTATUS
 gcoINDEX_UploadOffset(
     IN gcoINDEX Index,
-    IN gctSIZE_T Offset,
+    IN gctUINT32 Offset,
     IN gctCONST_POINTER Buffer,
     IN gctSIZE_T Bytes
     );
@@ -636,9 +512,27 @@ gcoINDEX_SetDynamic(
     IN gctUINT Buffers
     );
 
+gceSTATUS
+gcoINDEX_UploadDynamic(
+    IN gcoINDEX Index,
+    IN gctCONST_POINTER Data,
+    IN gctSIZE_T Bytes
+    );
+
 /******************************************************************************\
 ********************************** gco3D Object *********************************
 \******************************************************************************/
+
+/* Clear flags. */
+typedef enum _gceCLEAR
+{
+    gcvCLEAR_COLOR              = 0x1,
+    gcvCLEAR_DEPTH              = 0x2,
+    gcvCLEAR_STENCIL            = 0x4,
+    gcvCLEAR_HZ                 = 0x8,
+    gcvCLEAR_HAS_VAA            = 0x10,
+}
+gceCLEAR;
 
 /* Blending targets. */
 typedef enum _gceBLEND_UNIT
@@ -668,13 +562,6 @@ gco3D_SetAPI(
     IN gceAPI ApiType
     );
 
-/* Get 3D API type. */
-gceSTATUS
-gco3D_GetAPI(
-    IN gco3D Engine,
-    OUT gceAPI * ApiType
-    );
-
 /* Set render target. */
 gceSTATUS
 gco3D_SetTarget(
@@ -689,47 +576,11 @@ gco3D_UnsetTarget(
     IN gcoSURF Surface
     );
 
-gceSTATUS
-gco3D_SetTargetEx(
-    IN gco3D Engine,
-    IN gctUINT32 TargetIndex,
-    IN gcoSURF Surface,
-    IN gctUINT32 LayerIndex
-    );
-
-gceSTATUS
-gco3D_UnsetTargetEx(
-    IN gco3D Engine,
-    IN gctUINT32 TargetIndex,
-    IN gcoSURF Surface
-    );
-
-gceSTATUS
-gco3D_SetTargetOffsetEx(
-    IN gco3D Engine,
-    IN gctUINT32 TargetIndex,
-    IN gctSIZE_T Offset
-    );
-
-
-gceSTATUS
-gco3D_SetPSOutputMapping(
-    IN gco3D Engine,
-    IN gctINT32 * psOutputMapping
-    );
-
-
 /* Set depth buffer. */
 gceSTATUS
 gco3D_SetDepth(
     IN gco3D Engine,
     IN gcoSURF Surface
-    );
-
-gceSTATUS
-gco3D_SetDepthBufferOffset(
-    IN gco3D Engine,
-    IN gctSIZE_T Offset
     );
 
 /* Unset depth buffer. */
@@ -808,6 +659,45 @@ gceSTATUS
 gco3D_SetClearStencil(
     IN gco3D Engine,
     IN gctUINT32 Stencil
+    );
+
+/* Clear a Rect sub-surface. */
+gceSTATUS
+gco3D_ClearRect(
+    IN gco3D Engine,
+    IN gctUINT32 Address,
+    IN gctPOINTER Memory,
+    IN gctUINT32 Stride,
+    IN gceSURF_FORMAT Format,
+    IN gctINT32 Left,
+    IN gctINT32 Top,
+    IN gctINT32 Right,
+    IN gctINT32 Bottom,
+    IN gctUINT32 Width,
+    IN gctUINT32 Height,
+    IN gctUINT32 Flags
+    );
+
+/* Clear surface. */
+gceSTATUS
+gco3D_Clear(
+    IN gco3D Engine,
+    IN gctUINT32 Address,
+    IN gctUINT32 Stride,
+    IN gceSURF_FORMAT Format,
+    IN gctUINT32 Width,
+    IN gctUINT32 Height,
+    IN gctUINT32 Flags
+    );
+
+
+/* Clear tile status. */
+gceSTATUS
+gco3D_ClearTileStatus(
+    IN gco3D Engine,
+    IN gcsSURF_INFO_PTR Surface,
+    IN gctUINT32 TileStatusAddress,
+    IN gctUINT32 Flags
     );
 
 /* Set shading mode. */
@@ -989,20 +879,11 @@ gco3D_SetEarlyDepth(
     IN gctBOOL Enable
     );
 
-/* Deprecated: Enable or disable all early depth operations. */
+/* Enable or disable all early depth operations. */
 gceSTATUS
 gco3D_SetAllEarlyDepthModes(
     IN gco3D Engine,
     IN gctBOOL Disable
-    );
-
-/* Enable or disable all early depth operations. */
-gceSTATUS
-gco3D_SetAllEarlyDepthModesEx(
-    IN gco3D Engine,
-    IN gctBOOL Disable,
-    IN gctBOOL DisableModify,
-    IN gctBOOL DisablePassZ
     );
 
 /* Switch dynamic early mode */
@@ -1031,7 +912,7 @@ typedef struct _gcsSTENCIL_INFO
     gceSTENCIL_MODE         mode;
 
     gctUINT8                maskFront;
-    gctUINT8                maskBack;
+	gctUINT8                maskBack;
     gctUINT8                writeMaskFront;
     gctUINT8                writeMaskBack;
 
@@ -1218,20 +1099,8 @@ gceSTATUS
 gco3D_DrawPrimitives(
     IN gco3D Engine,
     IN gcePRIMITIVE Type,
-    IN gctSIZE_T StartVertex,
+    IN gctINT StartVertex,
     IN gctSIZE_T PrimitiveCount
-    );
-
-gceSTATUS
-gco3D_DrawInstancedPrimitives(
-    IN gco3D Engine,
-    IN gcePRIMITIVE Type,
-    IN gctBOOL DrawIndex,
-    IN gctSIZE_T StartVertex,
-    IN gctSIZE_T StartIndex,
-    IN gctSIZE_T PrimitiveCount,
-    IN gctSIZE_T VertexCount,
-    IN gctSIZE_T InstanceCount
     );
 
 gceSTATUS
@@ -1258,8 +1127,8 @@ gceSTATUS
 gco3D_DrawIndexedPrimitives(
     IN gco3D Engine,
     IN gcePRIMITIVE Type,
-    IN gctSIZE_T BaseVertex,
-    IN gctSIZE_T StartIndex,
+    IN gctINT BaseVertex,
+    IN gctINT StartIndex,
     IN gctSIZE_T PrimitiveCount
     );
 
@@ -1271,13 +1140,6 @@ gco3D_DrawIndexedPrimitivesOffset(
     IN gctINT32 BaseOffset,
     IN gctINT32 StartOffset,
     IN gctSIZE_T PrimitiveCount
-    );
-
-/* Draw a element from pattern */
-gceSTATUS
-gco3D_DrawPattern(
-    IN gco3D Engine,
-    IN gcsFAST_FLUSH_PTR FastFlushInfo
     );
 
 /* Enable or disable anti-aliasing. */
@@ -1304,12 +1166,6 @@ gco3D_Semaphore(
     IN gceWHERE To,
     IN gceHOW How);
 
-/* Explicitly flush shader L1 cache */
-gceSTATUS
-gco3D_FlushSHL1Cache(
-    IN gco3D Engine
-    );
-
 /* Set the subpixels center. */
 gceSTATUS
 gco3D_SetCentroids(
@@ -1323,48 +1179,6 @@ gco3D_SetLogicOp(
     IN gco3D Engine,
     IN gctUINT8 Rop
     );
-
-gceSTATUS
-gco3D_SetOQ(
-    IN gco3D Engine,
-    INOUT gctPOINTER * Result,
-    IN gctBOOL Enable
-    );
-
-gceSTATUS
-gco3D_GetOQ(
-    IN gco3D Engine,
-    IN gctPOINTER Result,
-    OUT gctINT64 * Logical
-    );
-
-gceSTATUS
-gco3D_DeleteOQ(
-    IN gco3D Engine,
-    INOUT gctPOINTER Result
-    );
-
-gceSTATUS
-gco3D_SetColorOutCount(
-    IN gco3D Engine,
-    IN gctUINT32 ColorOutCount
-    );
-
-gceSTATUS
-gco3D_Set3DEngine(
-    IN gco3D Engine
-    );
-
-gceSTATUS
-gco3D_UnSet3DEngine(
-    IN gco3D Engine
-    );
-
-gceSTATUS
-gco3D_Get3DEngine(
-    OUT gco3D * Engine
-    );
-
 
 /* OCL thread walker information. */
 typedef struct _gcsTHREAD_WALKER_INFO * gcsTHREAD_WALKER_INFO_PTR;
@@ -1405,18 +1219,11 @@ gco3D_InvokeThreadWalker(
     IN gcsTHREAD_WALKER_INFO_PTR Info
     );
 
-gceSTATUS
-gco3D_GetClosestRenderFormat(
-    IN gco3D Engine,
-    IN gceSURF_FORMAT InFormat,
-    OUT gceSURF_FORMAT* OutFormat
-    );
-
 /* Set w clip and w plane limit value. */
 gceSTATUS
 gco3D_SetWClipEnable(
-    IN gco3D Engine,
-    IN gctBOOL Enable
+	IN gco3D Engine,
+	IN gctBOOL Enable
     );
 
 gceSTATUS
@@ -1427,66 +1234,22 @@ gco3D_GetWClipEnable(
 
 gceSTATUS
 gco3D_SetWPlaneLimitF(
-    IN gco3D Engine,
-    IN gctFLOAT Value
+	IN gco3D Engine,
+	IN gctFLOAT Value
     );
 
 gceSTATUS
 gco3D_SetWPlaneLimitX(
-    IN gco3D Engine,
-    IN gctFIXED_POINT Value
+	IN gco3D Engine,
+	IN gctFIXED_POINT Value
     );
+
 
 gceSTATUS
 gco3D_SetWPlaneLimit(
         IN gco3D Engine,
         IN gctFLOAT Value
         );
-
-gceSTATUS
-gco3D_PrimitiveRestart(
-    IN gco3D Engine,
-    IN gctBOOL PrimitiveRestart);
-
-#if gcdSTREAM_OUT_BUFFER
-
-gceSTATUS
-gco3D_QueryStreamOut(
-    IN gco3D Engine,
-    IN gctUINT32 OriginalIndexAddress,
-    IN gctUINT32 OriginalIndexOffset,
-    IN gctUINT32 OriginalIndexCount,
-    OUT gctBOOL_PTR Found
-    );
-
-gceSTATUS
-gco3D_StartStreamOut(
-    IN gco3D Engine,
-    IN gctINT StreamOutStatus,
-    IN gctUINT32 IndexAddress,
-    IN gctUINT32 IndexOffset,
-    IN gctUINT32 IndexCount
-    );
-
-gceSTATUS
-gco3D_StopStreamOut(
-    IN gco3D Engine
-    );
-
-gceSTATUS
-gco3D_ReplayStreamOut(
-    IN gco3D Engine,
-    IN gctUINT32 IndexAddress,
-    IN gctUINT32 IndexOffset,
-    IN gctUINT32 IndexCount
-    );
-
-gceSTATUS
-gco3D_EndStreamOut(
-    IN gco3D Engine
-    );
-
-#endif
 
 /*----------------------------------------------------------------------------*/
 /*-------------------------- gco3D Fragment Processor ------------------------*/
@@ -1616,6 +1379,12 @@ gco3D_SetAlphaTextureFunction(
     IN gctINT Scale
     );
 
+/* Invoke OCL thread walker. */
+gceSTATUS
+gcoHARDWARE_InvokeThreadWalker(
+    IN gcsTHREAD_WALKER_INFO_PTR Info
+    );
+
 /******************************************************************************\
 ******************************* gcoTEXTURE Object *******************************
 \******************************************************************************/
@@ -1633,6 +1402,16 @@ typedef enum _gceTEXTURE_FACE
 }
 gceTEXTURE_FACE;
 
+#if gcdFORCE_MIPMAP
+typedef enum
+{
+    gcvForceMipDisabled  = 0,
+    gcvForceMipEnable    = 1,
+    gcvForceMipGenerated = 2,
+    gcvForceMipNever     = 3,
+}gceFORCE_MIPMAP;
+#endif
+
 typedef struct _gcsTEXTURE
 {
     /* Addressing modes. */
@@ -1640,30 +1419,23 @@ typedef struct _gcsTEXTURE
     gceTEXTURE_ADDRESSING       t;
     gceTEXTURE_ADDRESSING       r;
 
-    gceTEXTURE_SWIZZLE          swizzle[gcvTEXTURE_COMPONENT_NUM];
-
     /* Border color. */
-    gctUINT8                    border[gcvTEXTURE_COMPONENT_NUM];
+    gctUINT8                    border[4];
 
     /* Filters. */
     gceTEXTURE_FILTER           minFilter;
     gceTEXTURE_FILTER           magFilter;
     gceTEXTURE_FILTER           mipFilter;
     gctUINT                     anisoFilter;
-
+    gctBOOL                     forceTopLevel;
+    gctBOOL                     autoMipmap;
+#if gcdFORCE_MIPMAP
+    gceFORCE_MIPMAP             forceMipmap;
+#endif
     /* Level of detail. */
-    gctFLOAT                    lodBias;
-    gctFLOAT                    lodMin;
-    gctFLOAT                    lodMax;
-
-    /* base/max level */
-    gctINT32                    baseLevel;
-    gctINT32                    maxLevel;
-
-    /* depth texture comparison */
-    gceTEXTURE_COMPARE_MODE     compareMode;
-    gceCOMPARE                  compareFunc;
-
+    gctFIXED_POINT              lodBias;
+    gctFIXED_POINT              lodMin;
+    gctFIXED_POINT              lodMax;
 }
 gcsTEXTURE, * gcsTEXTURE_PTR;
 
@@ -1673,15 +1445,6 @@ gcoTEXTURE_Construct(
     IN gcoHAL Hal,
     OUT gcoTEXTURE * Texture
     );
-
-/* Construct a new gcoTEXTURE object with type information. */
-gceSTATUS
-gcoTEXTURE_ConstructEx(
-    IN gcoHAL Hal,
-    IN gceTEXTURE_TYPE Type,
-    OUT gcoTEXTURE * Texture
-    );
-
 
 /* Construct a new sized gcoTEXTURE object. */
 gceSTATUS
@@ -1702,40 +1465,60 @@ gceSTATUS
 gcoTEXTURE_Destroy(
     IN gcoTEXTURE Texture
     );
+#if gcdFORCE_MIPMAP
+gceSTATUS
+gcoTEXTURE_DestroyForceMipmap(
+    IN gcoTEXTURE Texture
+    );
+
+gceSTATUS
+gcoTEXTURE_GetMipLevels(
+    IN gcoTEXTURE Texture,
+    OUT gctINT * levels
+    );
+#endif
+/* Replace a mipmap in gcoTEXTURE object. */
+gceSTATUS
+gcoTEXTURE_ReplaceMipMap(
+    IN gcoTEXTURE Texture,
+    IN gctUINT Level,
+    IN gctUINT Width,
+    IN gctUINT Height,
+    IN gctINT imageFormat,
+    IN gceSURF_FORMAT Format,
+    IN gctUINT Depth,
+    IN gctUINT Faces,
+    IN gcePOOL Pool
+    );
 
 /* Upload data to an gcoTEXTURE object. */
 gceSTATUS
 gcoTEXTURE_Upload(
     IN gcoTEXTURE Texture,
-    IN gctINT MipMap,
     IN gceTEXTURE_FACE Face,
-    IN gctSIZE_T Width,
-    IN gctSIZE_T Height,
+    IN gctUINT Width,
+    IN gctUINT Height,
     IN gctUINT Slice,
     IN gctCONST_POINTER Memory,
-    IN gctSIZE_T Stride,
-    IN gceSURF_FORMAT Format,
-    IN gceSURF_COLOR_SPACE SrcColorSpace
+    IN gctINT Stride,
+    IN gceSURF_FORMAT Format
     );
 
 /* Upload data to an gcoTEXTURE object. */
 gceSTATUS
 gcoTEXTURE_UploadSub(
     IN gcoTEXTURE Texture,
-    IN gctINT MipMap,
+    IN gctUINT MipMap,
     IN gceTEXTURE_FACE Face,
-    IN gctSIZE_T X,
-    IN gctSIZE_T Y,
-    IN gctSIZE_T Width,
-    IN gctSIZE_T Height,
+    IN gctUINT X,
+    IN gctUINT Y,
+    IN gctUINT Width,
+    IN gctUINT Height,
     IN gctUINT Slice,
     IN gctCONST_POINTER Memory,
-    IN gctSIZE_T Stride,
-    IN gceSURF_FORMAT Format,
-    IN gceSURF_COLOR_SPACE SrcColorSpace,
-    IN gctUINT32 PhysicalAddress
+    IN gctINT Stride,
+    IN gceSURF_FORMAT Format
     );
-
 
 /* Upload YUV data to an gcoTEXTURE object. */
 gceSTATUS
@@ -1754,10 +1537,9 @@ gcoTEXTURE_UploadYUV(
 gceSTATUS
 gcoTEXTURE_UploadCompressed(
     IN gcoTEXTURE Texture,
-    IN gctINT MipMap,
     IN gceTEXTURE_FACE Face,
-    IN gctSIZE_T Width,
-    IN gctSIZE_T Height,
+    IN gctUINT Width,
+    IN gctUINT Height,
     IN gctUINT Slice,
     IN gctCONST_POINTER Memory,
     IN gctSIZE_T Bytes
@@ -1767,15 +1549,23 @@ gcoTEXTURE_UploadCompressed(
 gceSTATUS
 gcoTEXTURE_UploadCompressedSub(
     IN gcoTEXTURE Texture,
-    IN gctINT MipMap,
+    IN gctUINT MipMap,
     IN gceTEXTURE_FACE Face,
-    IN gctSIZE_T XOffset,
-    IN gctSIZE_T YOffset,
-    IN gctSIZE_T Width,
-    IN gctSIZE_T Height,
+    IN gctUINT XOffset,
+    IN gctUINT YOffset,
+    IN gctUINT Width,
+    IN gctUINT Height,
     IN gctUINT Slice,
     IN gctCONST_POINTER Memory,
     IN gctSIZE_T Size
+    );
+
+/* GetImageFormat of texture. */
+gceSTATUS
+gcoTEXTURE_GetImageFormat(
+    IN gcoTEXTURE Texture,
+    IN gctUINT MipMap,
+    OUT gctINT *  ImageFormat
     );
 
 /* Get gcoSURF object for a mipmap level. */
@@ -1793,44 +1583,20 @@ gcoTEXTURE_GetMipMapFace(
     IN gctUINT MipMap,
     IN gceTEXTURE_FACE Face,
     OUT gcoSURF * Surface,
-    OUT gctSIZE_T_PTR Offset
-    );
-
-gceSTATUS
-gcoTEXTURE_GetMipMapSlice(
-    IN gcoTEXTURE Texture,
-    IN gctUINT MipMap,
-    IN gctUINT Slice,
-    OUT gcoSURF * Surface,
-    OUT gctSIZE_T_PTR Offset
+    OUT gctUINT32_PTR Offset
     );
 
 gceSTATUS
 gcoTEXTURE_AddMipMap(
     IN gcoTEXTURE Texture,
     IN gctINT Level,
-    IN gctINT InternalFormat,
+    IN gctINT imageFormat,
     IN gceSURF_FORMAT Format,
-    IN gctSIZE_T Width,
-    IN gctSIZE_T Height,
-    IN gctSIZE_T Depth,
+    IN gctUINT Width,
+    IN gctUINT Height,
+    IN gctUINT Depth,
     IN gctUINT Faces,
     IN gcePOOL Pool,
-    OUT gcoSURF * Surface
-    );
-
-gceSTATUS
-gcoTEXTURE_AddMipMapWithFlag(
-    IN gcoTEXTURE Texture,
-    IN gctINT Level,
-    IN gctINT InternalFormat,
-    IN gceSURF_FORMAT Format,
-    IN gctSIZE_T Width,
-    IN gctSIZE_T Height,
-    IN gctSIZE_T Depth,
-    IN gctUINT Faces,
-    IN gcePOOL Pool,
-    IN gctBOOL Protected,
     OUT gcoSURF * Surface
     );
 
@@ -1846,6 +1612,12 @@ gcoTEXTURE_AddMipMapFromSurface(
     IN gcoTEXTURE Texture,
     IN gctINT     Level,
     IN gcoSURF    Surface
+    );
+
+gceSTATUS
+gcoTEXTURE_SetMaxLevel(
+    IN gcoTEXTURE Texture,
+    IN gctUINT Levels
     );
 
 gceSTATUS
@@ -1866,11 +1638,6 @@ gcoTEXTURE_Flush(
     );
 
 gceSTATUS
-gcoTEXTURE_FlushVS(
-    IN gcoTEXTURE Texture
-    );
-
-gceSTATUS
 gcoTEXTURE_QueryCaps(
     IN  gcoHAL    Hal,
     OUT gctUINT * MaxWidth,
@@ -1883,31 +1650,17 @@ gcoTEXTURE_QueryCaps(
     );
 
 gceSTATUS
+gcoTEXTURE_GetTiling(
+    IN gcoTEXTURE Texture,
+    IN gctINT preferLevel,
+	OUT gceTILING * Tiling
+    );
+
+gceSTATUS
 gcoTEXTURE_GetClosestFormat(
     IN gcoHAL Hal,
     IN gceSURF_FORMAT InFormat,
     OUT gceSURF_FORMAT* OutFormat
-    );
-
-gceSTATUS
-gcoTEXTURE_GetClosestFormatEx(
-    IN gcoHAL Hal,
-    IN gceSURF_FORMAT InFormat,
-    IN gceTEXTURE_TYPE TextureType,
-    OUT gceSURF_FORMAT* OutFormat
-    );
-
-gceSTATUS
-gcoTEXTURE_GetFormatInfo(
-    IN gcoTEXTURE Texture,
-    IN gctINT preferLevel,
-    OUT gcsSURF_FORMAT_INFO_PTR * TxFormatInfo
-    );
-
-gceSTATUS
-gcoTEXTURE_GetTextureFormatName(
-    IN gcsSURF_FORMAT_INFO_PTR TxFormatInfo,
-    OUT gctCONST_STRING * TxName
     );
 
 gceSTATUS
@@ -1917,14 +1670,13 @@ gcoTEXTURE_RenderIntoMipMap(
     );
 
 gceSTATUS
-gcoTEXTURE_RenderIntoMipMap2(
+gcoTEXTURE_IsRenderable(
     IN gcoTEXTURE Texture,
-    IN gctINT Level,
-    IN gctBOOL Sync
+    IN gctUINT Level
     );
 
 gceSTATUS
-gcoTEXTURE_IsRenderable(
+gcoTEXTURE_IsRenderableEx(
     IN gcoTEXTURE Texture,
     IN gctUINT Level
     );
@@ -1932,8 +1684,6 @@ gcoTEXTURE_IsRenderable(
 gceSTATUS
 gcoTEXTURE_IsComplete(
     IN gcoTEXTURE Texture,
-    IN gcsTEXTURE_PTR Info,
-    IN gctINT BaseLevel,
     IN gctINT MaxLevel
     );
 
@@ -1944,28 +1694,6 @@ gcoTEXTURE_BindTexture(
     IN gctINT Sampler,
     IN gcsTEXTURE_PTR Info
     );
-
-gceSTATUS
-gcoTEXTURE_BindTextureEx(
-    IN gcoTEXTURE Texture,
-    IN gctINT Target,
-    IN gctINT Sampler,
-    IN gcsTEXTURE_PTR Info,
-    IN gctINT textureLayer
-    );
-
-gceSTATUS
-gcoTEXTURE_InitParams(
-    IN gcoHAL Hal,
-    IN gcsTEXTURE_PTR TexParams
-    );
-
-gceSTATUS
-gcoTEXTURE_SetDepthTextureFlag(
-    IN gcoTEXTURE Texture,
-    IN gctBOOL  unsized
-    );
-
 
 /******************************************************************************\
 ******************************* gcoSTREAM Object ******************************
@@ -1984,25 +1712,8 @@ typedef enum _gceVERTEX_FORMAT
     gcvVERTEX_FLOAT,
     gcvVERTEX_UNSIGNED_INT_10_10_10_2,
     gcvVERTEX_INT_10_10_10_2,
-    gcvVERTEX_UNSIGNED_INT_2_10_10_10_REV,
-    gcvVERTEX_INT_2_10_10_10_REV,
-    /* integer format */
-    gcvVERTEX_INT8,
-    gcvVERTEX_INT16,
-    gcvVERTEX_INT32,
 }
 gceVERTEX_FORMAT;
-
-/* What the SW converting scheme to create temp attrib */
-typedef enum _gceATTRIB_SCHEME
-{
-    gcvATTRIB_SCHEME_KEEP = 0,
-    gcvATTRIB_SCHEME_2_10_10_10_REV_TO_FLOAT,
-    gcvATTRIB_SCHEME_BYTE_TO_INT,
-    gcvATTRIB_SCHEME_SHORT_TO_INT,
-    gcvATTRIB_SCHEME_UBYTE_TO_UINT,
-    gcvATTRIB_SCHEME_USHORT_TO_UINT,
-} gceATTRIB_SCHEME;
 
 gceSTATUS
 gcoSTREAM_Construct(
@@ -2019,7 +1730,7 @@ gceSTATUS
 gcoSTREAM_Upload(
     IN gcoSTREAM Stream,
     IN gctCONST_POINTER Buffer,
-    IN gctSIZE_T Offset,
+    IN gctUINT32 Offset,
     IN gctSIZE_T Bytes,
     IN gctBOOL Dynamic
     );
@@ -2028,18 +1739,6 @@ gceSTATUS
 gcoSTREAM_SetStride(
     IN gcoSTREAM Stream,
     IN gctUINT32 Stride
-    );
-
-gceSTATUS
-gcoSTREAM_Size(
-    IN gcoSTREAM Stream,
-    OUT gctSIZE_T *Size
-    );
-
-gceSTATUS
-gcoSTREAM_Node(
-    IN gcoSTREAM Stream,
-    OUT gcsSURF_NODE_PTR * Node
     );
 
 gceSTATUS
@@ -2097,14 +1796,6 @@ gcoSTREAM_UploadDynamic(
 gceSTATUS
 gcoSTREAM_CPUCacheOperation(
     IN gcoSTREAM Stream,
-    IN gceCACHEOPERATION Operation
-    );
-
-gceSTATUS
-gcoSTREAM_CPUCacheOperation_Range(
-    IN gcoSTREAM Stream,
-    IN gctSIZE_T Offset,
-    IN gctSIZE_T Length,
     IN gceCACHEOPERATION Operation
     );
 
@@ -2166,61 +1857,6 @@ gcoVERTEX_Bind(
 /*******************************************************************************
 ***** gcoVERTEXARRAY Object ***************************************************/
 
-typedef struct _gcsATTRIBUTE
-{
-    /* Enabled. */
-    gctBOOL             enable;
-
-    /* Number of components. */
-    gctINT              size;
-
-    /* Attribute format. */
-    gceVERTEX_FORMAT    format;
-
-    /* Flag whether the attribute is normalized or not. */
-    gctBOOL             normalized;
-
-    /* Stride of the component. */
-    gctSIZE_T           stride;
-
-    /* Divisor of the attribute */
-    gctUINT             divisor;
-
-    /* Pointer to the attribute data. */
-    gctCONST_POINTER    pointer;
-
-    /* Stream object owning the attribute data. */
-    gcoBUFOBJ           stream;
-
-    /* Generic values for attribute. */
-    gctFLOAT            genericValue[4];
-
-    /* Generic size for attribute. */
-    gctINT              genericSize;
-
-    /* Vertex shader linkage. */
-    gctUINT             linkage;
-
-#if gcdUSE_WCLIP_PATCH
-    /* Does it hold positions? */
-    gctBOOL             isPosition;
-#endif
-
-    /* Index to vertex array */
-    gctINT              arrayIdx;
-
-    gceATTRIB_SCHEME    convertScheme;
-
-    /* Pointer to the temporary buffer to be freed */
-    gcoBUFOBJ           tempStream;
-
-    /* Pointer to the temporary memory to be freed */
-    gctCONST_POINTER    tempMemory;
-}
-gcsATTRIBUTE,
-* gcsATTRIBUTE_PTR;
-
-
 typedef struct _gcsVERTEXARRAY
 {
     /* Enabled. */
@@ -2238,9 +1874,6 @@ typedef struct _gcsVERTEXARRAY
     /* Stride of the component. */
     gctUINT             stride;
 
-    /* Divisor of the attribute */
-    gctUINT             divisor;
-
     /* Pointer to the attribute data. */
     gctCONST_POINTER    pointer;
 
@@ -2256,7 +1889,9 @@ typedef struct _gcsVERTEXARRAY
     /* Vertex shader linkage. */
     gctUINT             linkage;
 
+#if gcdUSE_WCLIP_PATCH
     gctBOOL             isPosition;
+#endif
 }
 gcsVERTEXARRAY,
 * gcsVERTEXARRAY_PTR;
@@ -2270,51 +1905,6 @@ gcoVERTEXARRAY_Construct(
 gceSTATUS
 gcoVERTEXARRAY_Destroy(
     IN gcoVERTEXARRAY Vertex
-    );
-
-gceSTATUS
-gcoVERTEXARRAY_Bind_Ex(
-    IN gcoVERTEXARRAY Vertex,
-    IN gctUINT32 EnableBits,
-    IN gcsVERTEXARRAY_PTR VertexArray,
-    IN gctUINT First,
-    IN gctSIZE_T Count,
-    IN gctBOOL DrawArraysInstanced,
-    IN gctSIZE_T InstanceCount,
-    IN gceINDEX_TYPE IndexType,
-    IN gcoINDEX IndexObject,
-    IN gctPOINTER IndexMemory,
-    IN OUT gcePRIMITIVE * PrimitiveType,
-#if gcdUSE_WCLIP_PATCH
-    IN OUT gctUINT * PrimitiveCount,
-    IN OUT gctFLOAT * wLimitRms,
-    IN OUT gctBOOL * wLimitDirty
-#else
-    IN OUT gctUINT * PrimitiveCount
-#endif
-    );
-
-gceSTATUS
-gcoVERTEXARRAY_Bind_Ex2(
-    IN gcoVERTEXARRAY Vertex,
-    IN gctUINT32 EnableBits,
-    IN gcsATTRIBUTE_PTR VertexArray,
-    IN gctSIZE_T First,
-    IN gctSIZE_T Count,
-    IN gctBOOL DrawArraysInstanced,
-    IN gctSIZE_T InstanceCount,
-    IN gceINDEX_TYPE IndexType,
-    IN gcoBUFOBJ IndexObject,
-    IN gctPOINTER IndexMemory,
-    IN OUT gcePRIMITIVE * PrimitiveType,
-#if gcdUSE_WCLIP_PATCH
-    IN OUT gctSIZE_T * PrimitiveCount,
-    IN OUT gctFLOAT * wLimitRms,
-    IN OUT gctBOOL * wLimitDirty,
-#else
-    IN OUT gctUINT * PrimitiveCount,
-#endif
-    IN gctINT VertexInstanceIdLinkage
     );
 
 gceSTATUS
@@ -2337,6 +1927,16 @@ gcoVERTEXARRAY_Bind(
 #endif
     );
 
+gctUINT
+gcoVERTEXARRAY_GetMaxStream(
+    IN gcoVERTEXARRAY Vertex
+);
+
+gceSTATUS
+gcoVERTEXARRAY_SetMaxStream(
+    IN gcoVERTEXARRAY Vertex,
+    gctUINT maxStreams
+);
 /*******************************************************************************
 ***** Composition *************************************************************/
 
@@ -2385,24 +1985,21 @@ gcsCOMPOSITION;
 
 gceSTATUS
 gco3D_ProbeComposition(
-    IN gcoHARDWARE Hardware,
-    IN gctBOOL ResetIfEmpty
+    gctBOOL ResetIfEmpty
     );
 
 gceSTATUS
 gco3D_CompositionBegin(
-    IN gcoHARDWARE Hardware
+    void
     );
 
 gceSTATUS
 gco3D_ComposeLayer(
-    IN gcoHARDWARE Hardware,
     IN gcsCOMPOSITION_PTR Layer
     );
 
 gceSTATUS
 gco3D_CompositionSignals(
-    IN gcoHARDWARE Hardware,
     IN gctHANDLE Process,
     IN gctSIGNAL Signal1,
     IN gctSIGNAL Signal2
@@ -2410,7 +2007,6 @@ gco3D_CompositionSignals(
 
 gceSTATUS
 gco3D_CompositionEnd(
-    IN gcoHARDWARE Hardware,
     IN gcoSURF Target,
     IN gctBOOL Synchronous
     );
@@ -2426,162 +2022,32 @@ gcoHAL_DumpFrameDB(
     gctCONST_STRING Filename OPTIONAL
     );
 
-/******************************************************************************
-**********************gcoBUFOBJ object*****************************************
-*******************************************************************************/
-typedef enum _gceBUFOBJ_TYPE
-{
-    gcvBUFOBJ_TYPE_ARRAY_BUFFER = 1,
-    gcvBUFOBJ_TYPE_ELEMENT_ARRAY_BUFFER  = 2,
-    gcvBUFOBJ_TYPE_GENERIC_BUFFER = 100
-
-} gceBUFOBJ_TYPE;
-
-typedef enum _gceBUFOBJ_USAGE
-{
-    gcvBUFOBJ_USAGE_STREAM_DRAW = 1,
-    gcvBUFOBJ_USAGE_STREAM_READ,
-    gcvBUFOBJ_USAGE_STREAM_COPY,
-    gcvBUFOBJ_USAGE_STATIC_DRAW,
-    gcvBUFOBJ_USAGE_STATIC_READ,
-    gcvBUFOBJ_USAGE_STATIC_COPY,
-    gcvBUFOBJ_USAGE_DYNAMIC_DRAW,
-    gcvBUFOBJ_USAGE_DYNAMIC_READ,
-    gcvBUFOBJ_USAGE_DYNAMIC_COPY,
-
-} gceBUFOBJ_USAGE;
-
-/* Construct a new gcoBUFOBJ object. */
 gceSTATUS
-gcoBUFOBJ_Construct(
-    IN gcoHAL Hal,
-    IN gceBUFOBJ_TYPE Type,
-    OUT gcoBUFOBJ * BufObj
-    );
-
-/* Destroy a gcoBUFOBJ object. */
-gceSTATUS
-gcoBUFOBJ_Destroy(
-    IN gcoBUFOBJ BufObj
-    );
-
-/* Lock pbo in memory. */
-gceSTATUS
-gcoBUFOBJ_Lock(
-    IN gcoBUFOBJ BufObj,
-    OUT gctUINT32 * Address,
-    OUT gctPOINTER * Memory
-    );
-
-/* Lock pbo in memory. */
-gceSTATUS
-gcoBUFOBJ_FastLock(
-    IN gcoBUFOBJ BufObj,
-    OUT gctUINT32 * Address,
-    OUT gctPOINTER * Memory
-    );
-
-/* Unlock pbo that was previously locked with gcoBUFOBJ_Lock. */
-gceSTATUS
-gcoBUFOBJ_Unlock(
-    IN gcoBUFOBJ BufObj
-    );
-
-/* Free existing pbo buffer. */
-gceSTATUS
-gcoBUFOBJ_Free(
-    IN gcoBUFOBJ BufObj
-    );
-
-/* Upload data into an pbo buffer. */
-gceSTATUS
-gcoBUFOBJ_Upload(
-    IN gcoBUFOBJ BufObj,
-    IN gctCONST_POINTER Buffer,
-    IN gctSIZE_T Offset,
+gcoHAL_GetSharedInfo(
+    IN gctUINT32 Pid,
+    IN gctUINT32 DataId,
     IN gctSIZE_T Bytes,
-    IN gceBUFOBJ_USAGE Usage
+    OUT gctPOINTER Data
     );
 
-/* Bind an index object to the hardware. */
 gceSTATUS
-gcoBUFOBJ_IndexBind (
-    IN gcoBUFOBJ Index,
-    IN gceINDEX_TYPE Type,
-    IN gctUINT32 Offset,
-    IN gctSIZE_T Count
+gcoHAL_SetSharedInfo(
+    IN gctUINT32 DataId,
+    IN gctPOINTER Data,
+    IN gctSIZE_T Bytes
     );
 
-/* Find min and max index for the index buffer */
+#if VIVANTE_PROFILER_CONTEXT
 gceSTATUS
-gcoBUFOBJ_IndexGetRange(
-    IN gcoBUFOBJ Index,
-    IN gceINDEX_TYPE Type,
-    IN gctUINT32 Offset,
-    IN gctUINT32 Count,
-    OUT gctUINT32 * MinimumIndex,
-    OUT gctUINT32 * MaximumIndex
+gcoHARDWARE_GetContext(
+    IN gcoHARDWARE Hardware,
+    OUT gctUINT32 * Context
     );
-
-/*  Sets a buffer object as dirty */
-gceSTATUS
-gcoBUFOBJ_SetDirty(
-    IN gcoBUFOBJ BufObj
-    );
-
-/* Creates a new buffer if needed */
-gceSTATUS
-gcoBUFOBJ_AlignIndexBufferWhenNeeded(
-    IN gcoBUFOBJ BufObj,
-    IN gctSIZE_T Offset,
-    OUT gcoBUFOBJ * AlignedBufObj
-    );
-
-/* Cache operations on whole range */
-gceSTATUS
-gcoBUFOBJ_CPUCacheOperation(
-    IN gcoBUFOBJ BufObj,
-    IN gceCACHEOPERATION Operation
-    );
-
-/* Cache operations on a specified range */
-gceSTATUS
-gcoBUFOBJ_CPUCacheOperation_Range(
-    IN gcoBUFOBJ BufObj,
-    IN gctSIZE_T Offset,
-    IN gctSIZE_T Length,
-    IN gceCACHEOPERATION Operation
-    );
-
-/* Return size of the bufobj */
-gceSTATUS
-gcoBUFOBJ_GetSize(
-    IN gcoBUFOBJ BufObj,
-    OUT gctSIZE_T_PTR Size
-    );
-
-/* Return memory node of the bufobj */
-gceSTATUS
-gcoBUFOBJ_GetNode(
-    IN gcoBUFOBJ BufObj,
-    OUT gcsSURF_NODE_PTR * Node
-    );
-
-/* Handle GPU cache operations */
-gceSTATUS
-gcoBUFOBJ_GPUCacheOperation(
-    gcoBUFOBJ BufObj
-    );
-
-/* Dump buffer. */
-void
-gcoBUFOBJ_Dump(
-    IN gcoBUFOBJ BufObj
-    );
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* gcdENABLE_3D */
+#endif /* VIVANTE_NO_3D */
 #endif /* __gc_hal_engine_h_ */

@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    Copyright (C) 2005 - 2013 by Vivante Corp.
 *
 *    This program is free software; you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -56,37 +56,37 @@ typedef struct _gcsCOMMAND_BUFFER_INFO
 
     /* Alignment and mask for the buffer address. */
     gctUINT                     addressMask;
-    gctUINT32                    addressAlignment;
+    gctSIZE_T                   addressAlignment;
 
     /* Alignment for each command. */
-    gctUINT32                   commandAlignment;
+    gctSIZE_T                   commandAlignment;
 
     /* Number of bytes required by the STATE command. */
-    gctUINT32                   stateCommandSize;
+    gctSIZE_T                   stateCommandSize;
 
     /* Number of bytes required by the RESTART command. */
-    gctUINT32                   restartCommandSize;
+    gctSIZE_T                   restartCommandSize;
 
     /* Number of bytes required by the FETCH command. */
-    gctUINT32                   fetchCommandSize;
+    gctSIZE_T                   fetchCommandSize;
 
     /* Number of bytes required by the CALL command. */
-    gctUINT32                   callCommandSize;
+    gctSIZE_T                   callCommandSize;
 
     /* Number of bytes required by the RETURN command. */
-    gctUINT32                   returnCommandSize;
+    gctSIZE_T                   returnCommandSize;
 
     /* Number of bytes required by the EVENT command. */
-    gctUINT32                   eventCommandSize;
+    gctSIZE_T                   eventCommandSize;
 
     /* Number of bytes required by the END command. */
-    gctUINT32                   endCommandSize;
+    gctSIZE_T                   endCommandSize;
 
     /* Number of bytes reserved at the tail of a static command buffer. */
-    gctUINT32                   staticTailSize;
+    gctSIZE_T                   staticTailSize;
 
     /* Number of bytes reserved at the tail of a dynamic command buffer. */
-    gctUINT32                   dynamicTailSize;
+    gctSIZE_T                   dynamicTailSize;
 }
 gcsCOMMAND_BUFFER_INFO;
 
@@ -221,7 +221,7 @@ typedef struct _gcsTASK_FREE_VIDEO_MEMORY
     IN gceTASK                  id;
 
     /* Allocated video memory. */
-    IN gctUINT32                node;
+    IN gctUINT64                node;
 }
 gcsTASK_FREE_VIDEO_MEMORY;
 
